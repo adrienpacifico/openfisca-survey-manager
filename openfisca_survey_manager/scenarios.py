@@ -37,13 +37,14 @@ class AbstractSurveyScenario(object):
     input_data_frame = None
     input_data_frames_by_entity_key_plural = None
     legislation_json = None
+    reform = None
     simulation = None
     tax_benefit_system = None
     used_as_input_variables = None
     year = None
     weight_column_name_by_entity_key_plural = dict()
 
-    def init_from_data_frame(self, input_data_frame = None, input_data_frames_by_entity_key_plural = None,
+    def init_from_data_frame(self, input_data_frame = None, input_data_frames_by_entity_key_plural = None,reform = None,
         tax_benefit_system = None, used_as_input_variables = None, year = None):
 
         assert input_data_frame is not None or input_data_frames_by_entity_key_plural is not None
@@ -58,6 +59,9 @@ class AbstractSurveyScenario(object):
         else:
             assert isinstance(used_as_input_variables, list)
             self.used_as_input_variables = used_as_input_variables
+
+
+        self.reform = reform
         assert tax_benefit_system is not None
         self.tax_benefit_system = tax_benefit_system
         assert year is not None
