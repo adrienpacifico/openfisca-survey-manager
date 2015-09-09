@@ -111,6 +111,10 @@ class AbstractSurveyScenario(object):
 
         # Define a useful function to clean
         def filter_input_variables(input_data_frame):
+            '''Remove non-input variables from input_data_frame.
+            If formulas name are in used_as_input_variable it puts the dataframe.column
+            value as the result of the formula.
+            '''
             for column_name in input_data_frame:
                 if column_name not in column_by_name:
                     log.info('Unknown column "{}" in survey, dropped from input table'.format(column_name))
@@ -172,12 +176,14 @@ class AbstractSurveyScenario(object):
                     entity.count)
                 holder.array = np.array(array, dtype = holder.column.dtype)
 
+            #Adrien : Pour introduire les variables en mensuelle faire un holder.set_array(period, array) avec
+            # period = "{}-{}".format(year,month) (dans le cadre du calendrier d'activité.
+
         # Case 2: fill simulation with an input_data_frame by entity
         elif input_data_frames_by_entity_key_plural is not None:
             for entity in simulation.entity_by_key_singular.values():
                 input_data_frame = input_data_frames_by_entity_key_plural[entity.index_for_person_variable_name]
                 filter_input_variables(input_data_frame)
-
         # Convert columns from df to array:
                 for column_name, column_serie in input_data_frame.iteritems():
                     holder = simulation.get_or_new_holder(column_name)
