@@ -259,9 +259,91 @@ class AbstractSurveyScenario(object):
                 if column.entity_key_plural == entity_key_plural
                 ]
             openfisca_data_frame_by_entity_key_plural[entity_key_plural] = pandas.DataFrame(
-                dict((column_name, simulation.calculate_add(column_name)) for column_name in column_names)
+                dict((column_name, simulation.calculate_add(column_name)) for column_name in column_names) #TODO mensualize : allow for periods
                 )
         return openfisca_data_frame_by_entity_key_plural
+
+
+    def create_data_frame_by_entity_key_plural_by_period(self, variables = None, indices = False, periods_list=None, roles = False):  #TODO: a supprimer a terme et merger avec create_data_frame_by_entity_key_plural en mettant une option
+        assert variables is not None or indices or roles
+        for period in periods_list:
+            try:
+                periods.period(period)
+            except ValueError:
+                log.error("{} in your periods dict is not an OpenFisca period".format(period))
+                raise
+        variables = list(
+            set(variables).union(set(self.index_variables(indices = indices, roles = roles)))
+            )
+        tax_benefit_system = self.tax_benefit_system
+        simulation = self.simulation
+        missing_variables = set(variables).difference(set(self.tax_benefit_system.column_by_name.keys()))
+        if missing_variables:
+            log.warn("These variables aren't par of the tax-benefit system: {}".format(missing_variables))
+        columns_to_fetch = [
+            self.tax_benefit_system.column_by_name.get(variable_name) for variable_name in variables
+            if self.tax_benefit_system.column_by_name.get(variable_name) is not None
+            ]
+        openfisca_data_frame_by_entity_key_plural = dict()
+        for entity_key_plural in tax_benefit_system.entity_class_by_key_plural.keys():
+            column_names = [
+                column.name for column in columns_to_fetch
+                if column.entity_key_plural == entity_key_plural
+                ]
+            if periods_list is None:
+                openfisca_data_frame_by_entity_key_plural[entity_key_plural] = pandas.DataFrame(
+                    dict((column_name, simulation.calculate_add(column_name)) for column_name in column_names) #TODO mensualize : allow for periods
+                    )
+            else:
+                for period in periods_list:
+                    openfisca_data_frame_by_entity_key_plural[entity_key_plural] = pandas.DataFrame(
+                        dict((column_name+"_"+period, simulation.calculate_add(column_name, period)) for period in periods_list for column_name in column_names) #TODO mensualize : allow for periods
+                        )
+
+
+        return openfisca_data_frame_by_entity_key_plural
+
+    def create_data_frame_by_entity_key_plural_with_monthly_basis_selector(self, variables = None, monthly_variables=None, indices = False,  roles = False):  #TODO: a supprimer a terme et merger avec create_data_frame_by_entity_key_plural en mettant une option
+        assert variables is not None or indices or roles
+        variables = list(
+            set(variables).union(set(self.index_variables(indices = indices, roles = roles)))
+            )
+        tax_benefit_system = self.tax_benefit_system
+        simulation = self.simulation
+        print simulation
+        print self
+        missing_variables = set(variables+monthly_variables).difference(set(self.tax_benefit_system.column_by_name.keys()))
+        if missing_variables:
+            log.warn("These variables aren't par of the tax-benefit system: {}".format(missing_variables))
+        columns_to_fetch = [
+            self.tax_benefit_system.column_by_name.get(variable_name) for variable_name in variables
+            if self.tax_benefit_system.column_by_name.get(variable_name) is not None
+            ]
+        monthly_columns_to_fetch = [
+            self.tax_benefit_system.column_by_name.get(variable_name) for variable_name in monthly_variables
+            if self.tax_benefit_system.column_by_name.get(variable_name) is not None
+            ]
+        openfisca_data_frame_by_entity_key_plural = dict()
+        for entity_key_plural in tax_benefit_system.entity_class_by_key_plural.keys():
+            column_names = [
+                column.name for column in columns_to_fetch
+                if column.entity_key_plural == entity_key_plural
+                ]
+            monthly_column_names = [
+                column.name for column in monthly_columns_to_fetch
+                if column.entity_key_plural == entity_key_plural
+                ]
+            df = pandas.DataFrame(
+                dict((column_name, simulation.calculate_add(column_name)) for column_name in column_names)
+                    )
+
+            monthly_df = pandas.DataFrame(
+                dict((column_name+"_"+period, simulation.calculate_add(column_name, period)) for period in ['{}-{}'.format( self.simulation.period, str(month).zfill(2)) for month in range(1, 13)] for column_name in monthly_column_names) #TODO mensualize : allow for periods
+                )
+            openfisca_data_frame_by_entity_key_plural[entity_key_plural] = pandas.concat([df, monthly_df], axis=1, join_axes=[df.index]) #TODO : find a better alternative, just need to add columns
+
+        return openfisca_data_frame_by_entity_key_plural
+
 
     def new_simulation(self, debug = False, debug_all = False, reference = False, trace = False):  # TODO: Transformer en classe ?
         assert isinstance(reference, (bool, reforms.AbstractReform))
